@@ -1,6 +1,8 @@
 package api
 
 import (
+	"github.com/go-chi/chi/v5"
+	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -39,17 +41,21 @@ func TestUpdateMetric(t *testing.T) {
 		},
 	}
 
+	r := chi.NewRouter()
+	r.Post("/update/{type}/{name}/{value}", UpdateMetric)
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, test.url, nil)
-			w := httptest.NewRecorder()
-			UpdateMetric(w, request)
-			res := w.Result()
-			defer func() {
-				_ = res.Body.Close()
-			}()
+			req := resty.New().R()
+			req.Method = http.MethodPost
+			req.URL = srv.URL + test.url
 
-			assert.Equal(t, test.want.code, res.StatusCode)
+			res, err := req.Send()
+
+			assert.NoError(t, err, "error making HTTP request")
+			assert.Equal(t, test.want.code, res.StatusCode())
 		})
 	}
 }

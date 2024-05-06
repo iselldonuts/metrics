@@ -1,47 +1,29 @@
 package api
 
 import (
+	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/iselldonuts/metrics/internal/storage"
 	"github.com/iselldonuts/metrics/internal/storage/memory"
-	"io"
 	"net/http"
 	"strconv"
-	"strings"
 )
-
-type Storage interface {
-	UpdateGauge(name string, value float64)
-	UpdateCounter(name string, value float64)
-}
 
 var s = storage.NewStorage(storage.Config{
 	Memory: &memory.Config{},
 })
 
 func UpdateMetric(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
+	mtype := chi.URLParam(r, "type")
+	name := chi.URLParam(r, "name")
+	value := chi.URLParam(r, "value")
 
-	path := strings.TrimPrefix(r.URL.Path, "/update/")
-	path = strings.TrimSuffix(path, "/")
-	parts := strings.Split(path, "/")
-	if len(parts) < 3 {
-		if len(parts) == 1 {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		} else {
-			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		}
-		return
-	}
-
-	metricType, name, value := parts[0], parts[1], parts[2]
-	switch metricType {
+	switch mtype {
 	case "gauge":
 		v, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			http.Error(w, "wrong metric value", http.StatusBadRequest)
+			return
 		}
 
 		s.UpdateGauge(name, v)
@@ -49,6 +31,7 @@ func UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		v, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			http.Error(w, "wrong metric value", http.StatusBadRequest)
+			return
 		}
 
 		s.UpdateCounter(name, v)
@@ -58,6 +41,44 @@ func UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func GetMetric(w http.ResponseWriter, r *http.Request) {
+	mtype := chi.URLParam(r, "type")
+	name := chi.URLParam(r, "name")
+
+	switch mtype {
+	case "gauge":
+		m, ok := s.GetGauge(name)
+		if !ok {
+			http.Error(w, "metric not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = fmt.Fprint(w, m)
+	case "counter":
+		m, ok := s.GetCounter(name)
+		if !ok {
+			http.Error(w, "metric not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = fmt.Fprint(w, m)
+	default:
+		http.Error(w, "wrong metric type", http.StatusBadRequest)
+	}
+}
+
 func Info(w http.ResponseWriter, r *http.Request) {
-	_, _ = io.WriteString(w, s.String())
+	w.Header().Set("Content-Type", "text/html")
+
+	_, _ = fmt.Fprintln(w, "<p>Counter metrics:</p><ul>")
+	for name, value := range s.GetAllCounter() {
+		_, _ = fmt.Fprintf(w, "<li>%s: %v</li>", name, value)
+	}
+	_, _ = fmt.Fprintln(w, "</ul><p>Gauge metrics:</p><ul>")
+	for name, value := range s.GetAllGauge() {
+		_, _ = fmt.Fprintf(w, "<li>%s: %v</li>", name, value)
+	}
+	_, _ = fmt.Fprintln(w, "</ul>")
 }

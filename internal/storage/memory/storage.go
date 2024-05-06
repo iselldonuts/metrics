@@ -36,6 +36,24 @@ func (m *Storage) UpdateGauge(name string, value float64) {
 	m.GaugeMap[name] = value
 }
 
+func (m *Storage) GetGauge(name string) (float64, bool) {
+	v, ok := m.GaugeMap[name]
+	return v, ok
+}
+
+func (m *Storage) GetCounter(name string) (int64, bool) {
+	v, ok := m.CounterMap[name]
+	return v, ok
+}
+
+func (m *Storage) GetAllGauge() map[string]float64 {
+	return m.GaugeMap
+}
+
+func (m *Storage) GetAllCounter() map[string]int64 {
+	return m.CounterMap
+}
+
 func (m *Storage) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("Storage{\n")

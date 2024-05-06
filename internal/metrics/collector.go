@@ -37,7 +37,7 @@ func (m *Collector) Update() {
 }
 
 func (m *Collector) GetAll() ([]GaugeMetric, []CounterMetric) {
-	gm := make([]GaugeMetric, GaugeMetricsCount)
+	gm := make([]GaugeMetric, 0, GaugeMetricsCount)
 	gm = append(gm, GaugeMetric{Name: "Alloc", Value: float64(m.MemStats.Alloc)})
 	gm = append(gm, GaugeMetric{Name: "BuckHashSys", Value: float64(m.MemStats.BuckHashSys)})
 	gm = append(gm, GaugeMetric{Name: "Frees", Value: float64(m.MemStats.Frees)})
@@ -67,7 +67,7 @@ func (m *Collector) GetAll() ([]GaugeMetric, []CounterMetric) {
 	gm = append(gm, GaugeMetric{Name: "TotalAlloc", Value: float64(m.MemStats.TotalAlloc)})
 	gm = append(gm, GaugeMetric{Name: "RandomValue", Value: m.RandomValue})
 
-	cm := make([]CounterMetric, CounterMetricsCount)
+	cm := make([]CounterMetric, 0, CounterMetricsCount)
 	cm = append(cm, CounterMetric{Name: "PollCounter", Value: m.PollCount})
 	m.PollCount = 0
 

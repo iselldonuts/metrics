@@ -9,6 +9,10 @@ type Storage interface {
 	fmt.Stringer
 	UpdateGauge(name string, value float64)
 	UpdateCounter(name string, value int64)
+	GetGauge(name string) (float64, bool)
+	GetCounter(name string) (int64, bool)
+	GetAllGauge() map[string]float64
+	GetAllCounter() map[string]int64
 }
 
 func NewStorage(conf Config) Storage {
