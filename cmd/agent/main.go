@@ -7,10 +7,12 @@ import (
 	"time"
 )
 
-const pollInterval = 2
-const reportInterval = 10
-
 func main() {
+	parseFlags()
+	run()
+}
+
+func run() {
 	col := metrics.NewCollector()
 
 	go func() {
@@ -19,7 +21,7 @@ func main() {
 			counter += 1
 			fmt.Printf("update #%d\n", counter)
 			col.Update()
-			time.Sleep(pollInterval * time.Second)
+			time.Sleep(time.Duration(options.pollInterval) * time.Second)
 		}
 	}()
 
@@ -34,7 +36,7 @@ func main() {
 			for _, m := range gm {
 				m := m
 				go func() {
-					url := fmt.Sprintf("http://localhost:8080/update/gauge/%s/%f", m.Name, m.Value)
+					url := fmt.Sprintf("http://%s/update/gauge/%s/%f", options.baseURL, m.Name, m.Value)
 					res, err := http.Post(url, "text/plain", nil)
 					if err != nil {
 						return
@@ -49,7 +51,7 @@ func main() {
 			for _, m := range cm {
 				m := m
 				go func() {
-					url := fmt.Sprintf("http://localhost:8080/update/counter/%s/%d", m.Name, m.Value)
+					url := fmt.Sprintf("http://%s/update/counter/%s/%d", options.baseURL, m.Name, m.Value)
 					res, err := http.Post(url, "text/plain", nil)
 					if err != nil {
 						return
@@ -61,7 +63,7 @@ func main() {
 				}()
 			}
 
-			time.Sleep(reportInterval * time.Second)
+			time.Sleep(time.Duration(options.reportInterval) * time.Second)
 		}
 	}()
 
