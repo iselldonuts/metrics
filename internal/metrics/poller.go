@@ -18,25 +18,25 @@ type CounterMetric struct {
 	Value int64
 }
 
-type Collector struct {
+type Poller struct {
 	PollCount   int64
 	RandomValue float64
 	MemStats    *runtime.MemStats
 }
 
-func NewCollector() *Collector {
-	return &Collector{
+func NewPoller() *Poller {
+	return &Poller{
 		MemStats: &runtime.MemStats{},
 	}
 }
 
-func (m *Collector) Update() {
+func (m *Poller) Update() {
 	m.PollCount += 1
 	m.RandomValue = rand.Float64()
 	runtime.ReadMemStats(m.MemStats)
 }
 
-func (m *Collector) GetAll() ([]GaugeMetric, []CounterMetric) {
+func (m *Poller) GetAll() ([]GaugeMetric, []CounterMetric) {
 	gm := make([]GaugeMetric, 0, GaugeMetricsCount)
 	gm = append(gm, GaugeMetric{Name: "Alloc", Value: float64(m.MemStats.Alloc)})
 	gm = append(gm, GaugeMetric{Name: "BuckHashSys", Value: float64(m.MemStats.BuckHashSys)})

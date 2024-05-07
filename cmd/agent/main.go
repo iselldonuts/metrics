@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"github.com/iselldonuts/metrics/internal/metrics"
-	"net/http"
 	"time"
 )
 
@@ -13,54 +13,46 @@ func main() {
 }
 
 func run() {
-	col := metrics.NewCollector()
+	fmt.Printf(
+		"Running agent | url: %s, ReportInterval: %d, PollInterval: %d\n",
+		options.baseURL, options.reportInterval, options.pollInterval,
+	)
 
-	fmt.Printf("Running agent with url: %s, ReportInterval: %d, PollInterval: %d\n",
-		options.baseURL, options.reportInterval, options.pollInterval)
+	poller := metrics.NewPoller()
+	client := resty.New()
 
-	go func() {
+	updater := func() {
 		for {
-			col.Update()
+			poller.Update()
 			time.Sleep(time.Duration(options.pollInterval) * time.Second)
 		}
-	}()
+	}
 
-	go func() {
+	sender := func() {
+		doPost := func(url string) {
+			_, _ = client.R().
+				SetHeader("Content-type", "text/plain").
+				Post(url)
+		}
+
 		for {
-			gm, cm := col.GetAll()
+			gm, cm := poller.GetAll()
 			for _, m := range gm {
-				m := m
-				go func() {
-					url := fmt.Sprintf("http://%s/update/gauge/%s/%f", options.baseURL, m.Name, m.Value)
-					res, err := http.Post(url, "text/plain", nil)
-					if err != nil {
-						return
-					}
-
-					defer func() {
-						_ = res.Body.Close()
-					}()
-				}()
+				url := fmt.Sprintf("http://%s/update/gauge/%s/%f", options.baseURL, m.Name, m.Value)
+				go doPost(url)
 			}
 
 			for _, m := range cm {
-				m := m
-				go func() {
-					url := fmt.Sprintf("http://%s/update/counter/%s/%d", options.baseURL, m.Name, m.Value)
-					res, err := http.Post(url, "text/plain", nil)
-					if err != nil {
-						return
-					}
-
-					defer func() {
-						_ = res.Body.Close()
-					}()
-				}()
+				url := fmt.Sprintf("http://%s/update/counter/%s/%d", options.baseURL, m.Name, m.Value)
+				go doPost(url)
 			}
 
 			time.Sleep(time.Duration(options.reportInterval) * time.Second)
 		}
-	}()
+	}
+
+	go updater()
+	go sender()
 
 	time.Sleep(time.Duration(1<<63 - 1))
 }
