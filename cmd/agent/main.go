@@ -15,23 +15,18 @@ func main() {
 func run() {
 	col := metrics.NewCollector()
 
+	fmt.Printf("Running agent with url: %s, ReportInterval: %d, PollInterval: %d\n",
+		options.baseURL, options.reportInterval, options.pollInterval)
+
 	go func() {
-		counter := 0
 		for {
-			counter += 1
-			fmt.Printf("update #%d\n", counter)
 			col.Update()
 			time.Sleep(time.Duration(options.pollInterval) * time.Second)
 		}
 	}()
 
 	go func() {
-		counter := 0
 		for {
-			counter += 1
-			fmt.Println()
-			fmt.Printf("counter: %d\n", counter)
-
 			gm, cm := col.GetAll()
 			for _, m := range gm {
 				m := m
