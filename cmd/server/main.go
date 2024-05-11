@@ -10,10 +10,12 @@ import (
 )
 
 func main() {
-	parseFlags()
+	if err := parseFlags(); err != nil {
+		log.Fatal(err)
+	}
 
 	if err := run(); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
 

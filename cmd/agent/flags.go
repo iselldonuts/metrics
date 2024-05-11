@@ -2,13 +2,10 @@ package main
 
 import (
 	"flag"
-	"log"
+	"fmt"
 
 	"github.com/caarlos0/env/v11"
 )
-
-const defaultReportInterval = 10
-const defaultPollInterval = 2
 
 var options struct {
 	baseURL        string
@@ -22,7 +19,10 @@ type envs struct {
 	PollInterval   int    `env:"POLL_INTERVAL"`
 }
 
-func parseFlags() {
+func parseFlags() error {
+	const defaultReportInterval = 10
+	const defaultPollInterval = 2
+
 	flag.StringVar(&options.baseURL, "a", "localhost:8080", "Server URL")
 	flag.IntVar(&options.reportInterval, "r", defaultReportInterval, "Report interval in seconds")
 	flag.IntVar(&options.pollInterval, "p", defaultPollInterval, "Poll interval in seconds")
@@ -31,7 +31,7 @@ func parseFlags() {
 	cfg := envs{}
 	err := env.Parse(&cfg)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("could not parse env variables: %w", err)
 	}
 
 	if cfg.Address != "" {
@@ -43,4 +43,5 @@ func parseFlags() {
 	if cfg.PollInterval != 0 {
 		options.pollInterval = cfg.PollInterval
 	}
+	return nil
 }

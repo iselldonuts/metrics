@@ -8,7 +8,10 @@ import (
 )
 
 func main() {
-	parseFlags()
+	if err := parseFlags(); err != nil {
+		log.Fatal(err)
+	}
+
 	run()
 }
 
@@ -19,11 +22,10 @@ func run() {
 	)
 
 	poller := metrics.NewPoller()
-
-	a := core.NewAgent(poller, core.Config{
+	agent := core.NewAgent(poller, core.Config{
 		BaseURL:        options.baseURL,
 		PollInterval:   options.pollInterval,
 		ReportInterval: options.reportInterval,
 	})
-	a.Start()
+	agent.Start()
 }

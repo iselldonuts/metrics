@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"log"
+	"fmt"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -13,17 +13,18 @@ type envs struct {
 	Address string `env:"ADDRESS"`
 }
 
-func parseFlags() {
+func parseFlags() error {
 	flag.StringVar(&baseURL, "a", "localhost:8080", "Server URL")
 	flag.Parse()
 
 	cfg := envs{}
 	err := env.Parse(&cfg)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("could not parse env variables: %w", err)
 	}
 
 	if cfg.Address != "" {
 		baseURL = cfg.Address
 	}
+	return nil
 }
