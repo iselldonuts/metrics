@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+
 	"github.com/iselldonuts/metrics/internal/storage/memory"
 )
 

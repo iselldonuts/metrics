@@ -1,6 +1,6 @@
 module github.com/iselldonuts/metrics
 
-go 1.21.9
+go 1.22.2
 
 require (
 	github.com/caarlos0/env/v11 v11.0.0

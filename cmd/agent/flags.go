@@ -2,9 +2,13 @@ package main
 
 import (
 	"flag"
-	"github.com/caarlos0/env/v11"
 	"log"
+
+	"github.com/caarlos0/env/v11"
 )
+
+const defaultReportInterval = 10
+const defaultPollInterval = 2
 
 var options struct {
 	baseURL        string
@@ -20,8 +24,8 @@ type envs struct {
 
 func parseFlags() {
 	flag.StringVar(&options.baseURL, "a", "localhost:8080", "Server URL")
-	flag.IntVar(&options.reportInterval, "r", 10, "Report interval in seconds")
-	flag.IntVar(&options.pollInterval, "p", 2, "Poll interval in seconds")
+	flag.IntVar(&options.reportInterval, "r", defaultReportInterval, "Report interval in seconds")
+	flag.IntVar(&options.pollInterval, "p", defaultPollInterval, "Poll interval in seconds")
 	flag.Parse()
 
 	cfg := envs{}

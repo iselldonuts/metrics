@@ -7,17 +7,17 @@ import (
 )
 
 type Storage struct {
-	GaugeMut   sync.RWMutex
 	GaugeMap   map[string]float64
-	CounterMut sync.RWMutex
 	CounterMap map[string]int64
+	GaugeMut   sync.RWMutex
+	CounterMut sync.RWMutex
 }
 
 func NewStorage() *Storage {
 	return &Storage{
 		GaugeMap:   make(map[string]float64),
-		GaugeMut:   sync.RWMutex{},
 		CounterMap: make(map[string]int64),
+		GaugeMut:   sync.RWMutex{},
 		CounterMut: sync.RWMutex{},
 	}
 }

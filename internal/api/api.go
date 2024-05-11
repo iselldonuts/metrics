@@ -2,11 +2,12 @@ package api
 
 import (
 	"fmt"
+	"net/http"
+	"strconv"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/iselldonuts/metrics/internal/storage"
 	"github.com/iselldonuts/metrics/internal/storage/memory"
-	"net/http"
-	"strconv"
 )
 
 var s = storage.NewStorage(storage.Config{

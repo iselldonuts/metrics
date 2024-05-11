@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/iselldonuts/metrics/internal/metrics"
-	"time"
 )
 
 func main() {
