@@ -1,8 +1,6 @@
 package memory
 
 import (
-	"fmt"
-	"strings"
 	"sync"
 )
 
@@ -52,19 +50,4 @@ func (m *Storage) GetAllGauge() map[string]float64 {
 
 func (m *Storage) GetAllCounter() map[string]int64 {
 	return m.CounterMap
-}
-
-func (m *Storage) String() string {
-	sb := strings.Builder{}
-	sb.WriteString("Storage{\n")
-	sb.WriteString("\tGauge:\n")
-	for n, v := range m.GaugeMap {
-		sb.WriteString(fmt.Sprintf("\t\t%s = %f\n", n, v))
-	}
-	sb.WriteString("\tCounter:\n")
-	for n, v := range m.CounterMap {
-		sb.WriteString(fmt.Sprintf("\t\t%s = %d\n", n, v))
-	}
-	sb.WriteString("}")
-	return sb.String()
 }

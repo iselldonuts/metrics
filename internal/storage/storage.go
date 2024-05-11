@@ -1,13 +1,10 @@
 package storage
 
 import (
-	"fmt"
-
 	"github.com/iselldonuts/metrics/internal/storage/memory"
 )
 
 type Storage interface {
-	fmt.Stringer
 	UpdateGauge(name string, value float64)
 	UpdateCounter(name string, value int64)
 	GetGauge(name string) (float64, bool)

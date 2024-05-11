@@ -4,8 +4,16 @@ GOLANGCI_LINT_CACHE?=/tmp/metrics-golangci-lint-cache
 goimports:
 	goimports -l -w .
 
-.PHONY: golangci-lint-run
-golangci-lint-run: _golangci-lint-rm-unformatted-report
+.PHONY: test
+test:
+	go test ./... -count 1
+
+.PHONY: run
+run:
+	go run ./cmd/server/& go run ./cmd/agent/
+
+.PHONY: lint
+lint: _golangci-lint-rm-unformatted-report
 
 .PHONY: _golangci-lint-reports-mkdir
 _golangci-lint-reports-mkdir:

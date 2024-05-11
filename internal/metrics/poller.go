@@ -36,6 +36,10 @@ func (m *Poller) Update() {
 	runtime.ReadMemStats(m.MemStats)
 }
 
+func (m *Poller) ResetCounter() {
+	m.PollCount = 0
+}
+
 func (m *Poller) GetAll() ([]GaugeMetric, []CounterMetric) {
 	gm := make([]GaugeMetric, 0, GaugeMetricsCount)
 	gm = append(gm,
@@ -70,7 +74,6 @@ func (m *Poller) GetAll() ([]GaugeMetric, []CounterMetric) {
 
 	cm := make([]CounterMetric, 0, CounterMetricsCount)
 	cm = append(cm, CounterMetric{Name: "PollCounter", Value: m.PollCount})
-	m.PollCount = 0
 
 	return gm, cm
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -23,6 +24,6 @@ func run() error {
 	r.Get("/value/{type}/{name}", api.GetMetric)
 	r.Get("/", api.Info)
 
-	fmt.Println("Running server on", baseURL)
+	log.Println("Running server on", baseURL)
 	return fmt.Errorf("run error: %w", http.ListenAndServe(baseURL, r))
 }
