@@ -26,3 +26,8 @@ vendor/
 
 # golangci-lint
 /golangci-lint
+
+# executables
+/agent
+/server
+
