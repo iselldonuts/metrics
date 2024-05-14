@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-resty/resty/v2"
+	"github.com/iselldonuts/metrics/internal/storage/memory"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,7 +44,9 @@ func TestUpdateMetric(t *testing.T) {
 	}
 
 	r := chi.NewRouter()
-	r.Post("/update/{type}/{name}/{value}", UpdateMetric)
+	s := memory.NewStorage()
+
+	r.Post("/update/{type}/{name}/{value}", UpdateMetric(s))
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 

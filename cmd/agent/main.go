@@ -3,29 +3,26 @@ package main
 import (
 	"log"
 
+	"github.com/iselldonuts/metrics/internal/config/agent"
 	"github.com/iselldonuts/metrics/internal/core"
 	"github.com/iselldonuts/metrics/internal/metrics"
 )
 
 func main() {
-	if err := parseFlags(); err != nil {
+	cfg, err := GetConfig()
+	if err != nil {
 		log.Fatal(err)
 	}
-
-	run()
+	run(cfg)
 }
 
-func run() {
+func run(conf *agent.Config) {
 	log.Printf(
-		"Running agent | url: %s, ReportInterval: %d, PollInterval: %d\n",
-		options.baseURL, options.reportInterval, options.pollInterval,
+		"Running a | url: %s, ReportInterval: %d, PollInterval: %d\n",
+		conf.Address, conf.ReportInterval, conf.PollInterval,
 	)
 
 	poller := metrics.NewPoller()
-	agent := core.NewAgent(poller, core.Config{
-		BaseURL:        options.baseURL,
-		PollInterval:   options.pollInterval,
-		ReportInterval: options.reportInterval,
-	})
-	agent.Start()
+	a := core.NewAgent(poller, conf)
+	a.Start()
 }
