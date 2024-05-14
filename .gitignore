@@ -23,3 +23,11 @@ vendor/
 # IDEs directories
 .idea
 .vscode
+
+# golangci-lint
+/golangci-lint
+
+# executables
+/agent
+/server
+
