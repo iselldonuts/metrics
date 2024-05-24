@@ -73,7 +73,7 @@ func (m *Poller) GetAll() ([]GaugeMetric, []CounterMetric) {
 		GaugeMetric{Name: "RandomValue", Value: m.RandomValue})
 
 	cm := make([]CounterMetric, 0, CounterMetricsCount)
-	cm = append(cm, CounterMetric{Name: "PollCounter", Value: m.PollCount})
+	cm = append(cm, CounterMetric{Name: "PollCount", Value: m.PollCount})
 
 	return gm, cm
 }

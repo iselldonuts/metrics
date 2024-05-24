@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/iselldonuts/metrics/internal/api"
 	"github.com/iselldonuts/metrics/internal/config/agent"
 	"github.com/iselldonuts/metrics/internal/metrics"
 )
@@ -42,16 +43,24 @@ func (a *Agent) Start() {
 			gm, cm := a.poller.GetAll()
 			for _, m := range gm {
 				value := strconv.FormatFloat(m.Value, 'f', -1, 64)
-				url := fmt.Sprintf("http://%s/update/gauge/%s/%s", a.baseURL, m.Name, value)
+				url := fmt.Sprintf("http://%s/update/", a.baseURL)
+
+				body := map[string]string{
+					"type":  "gauge",
+					"id":    m.Name,
+					"value": value,
+				}
 
 				res, err := client.R().
-					SetHeader("Content-type", "text/plain").
+					SetHeader(api.ContentType, api.ContentTypeJSON).
+					SetBody(body).
 					Post(url)
 
 				if err != nil {
 					log.Printf("Error updating gauge metric %q: %v", m.Name, err)
 					continue
 				}
+
 				if res.StatusCode() != http.StatusOK {
 					log.Printf("Failure updating metrics %q with status code: %d", m.Name, res.StatusCode())
 					continue
@@ -60,10 +69,17 @@ func (a *Agent) Start() {
 
 			for _, m := range cm {
 				value := strconv.FormatInt(m.Value, 10)
-				url := fmt.Sprintf("http://%s/update/counter/%s/%s", a.baseURL, m.Name, value)
+				url := fmt.Sprintf("http://%s/update/", a.baseURL)
+
+				body := map[string]string{
+					"type":  "counter",
+					"id":    m.Name,
+					"delta": value,
+				}
 
 				res, err := client.R().
-					SetHeader("Content-type", "text/plain").
+					SetHeader(api.ContentType, api.ContentTypeJSON).
+					SetBody(body).
 					Post(url)
 
 				if err != nil {
@@ -75,7 +91,7 @@ func (a *Agent) Start() {
 					continue
 				}
 
-				if m.Name == "PollCounter" {
+				if m.Name == "PollCount" {
 					a.poller.ResetCounter()
 				}
 			}

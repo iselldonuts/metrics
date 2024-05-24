@@ -8,7 +8,7 @@ import (
 	"github.com/iselldonuts/metrics/internal/config/agent"
 )
 
-func GetConfig() (*agent.Config, error) {
+func getConfig() (*agent.Config, error) {
 	const defaultReportInterval = 10
 	const defaultPollInterval = 2
 

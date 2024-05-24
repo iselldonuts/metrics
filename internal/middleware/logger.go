@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -25,16 +24,16 @@ func newLoggingResponseWriter(w http.ResponseWriter) *loggingResponseWriter {
 	}}
 }
 
-func (r *loggingResponseWriter) Write(b []byte) (int, error) {
-	size, err := r.ResponseWriter.Write(b)
-	r.responseData.size += size
-	return size, fmt.Errorf("error writing response: %w", err)
+func (w *loggingResponseWriter) WriteHeader(status int) {
+	w.ResponseWriter.WriteHeader(status)
+	w.responseData.status = status
 }
 
-func (r *loggingResponseWriter) WriteHeader(statusCode int) {
-	r.ResponseWriter.WriteHeader(statusCode)
-
-	r.responseData.status = statusCode
+func (w *loggingResponseWriter) Write(b []byte) (int, error) {
+	size, err := w.ResponseWriter.Write(b)
+	w.responseData.size += size
+	//nolint:wrapcheck // leads to unexpected behavior
+	return size, err
 }
 
 func Logger(log *zap.SugaredLogger, h http.HandlerFunc) http.HandlerFunc {

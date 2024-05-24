@@ -54,6 +54,7 @@ func TestUpdateMetric(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			req := resty.New().R()
 			req.Method = http.MethodPost
+
 			req.URL = srv.URL + test.url
 
 			res, err := req.Send()

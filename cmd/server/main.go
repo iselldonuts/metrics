@@ -27,7 +27,7 @@ func main() {
 	}(logger)
 	log := logger.Sugar()
 
-	conf, err := GetConfig()
+	conf, err := getConfig()
 	if err != nil {
 		log.Panic(err)
 	}
@@ -44,7 +44,9 @@ func run(conf *server.Config, log *zap.SugaredLogger) error {
 	})
 
 	r.Post("/update/{type}/{name}/{value}", middleware.Logger(log, api.UpdateMetric(s)))
+	r.Post("/update/", middleware.Logger(log, api.UpdateMetricJSON(s)))
 	r.Get("/value/{type}/{name}", middleware.Logger(log, api.GetMetric(s)))
+	r.Post("/value/", middleware.Logger(log, api.GetMetricJSON(s)))
 	r.Get("/", middleware.Logger(log, api.Info(s)))
 
 	log.Infow("Running server", "url", conf.Address)
