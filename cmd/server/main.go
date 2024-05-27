@@ -43,11 +43,14 @@ func run(conf *server.Config, log *zap.SugaredLogger) error {
 		Memory: &memory.Config{},
 	})
 
-	r.Post("/update/{type}/{name}/{value}", middleware.Logger(log, api.UpdateMetric(s)))
-	r.Post("/update/", middleware.Logger(log, api.UpdateMetricJSON(s)))
-	r.Get("/value/{type}/{name}", middleware.Logger(log, api.GetMetric(s)))
-	r.Post("/value/", middleware.Logger(log, api.GetMetricJSON(s)))
-	r.Get("/", middleware.Logger(log, api.Info(s)))
+	r.Use(middleware.Logger(log))
+	r.Use(middleware.Gzip(log))
+
+	r.Post("/update/{type}/{name}/{value}", api.UpdateMetric(s))
+	r.Post("/update/", api.UpdateMetricJSON(s))
+	r.Get("/value/{type}/{name}", api.GetMetric(s))
+	r.Post("/value/", api.GetMetricJSON(s))
+	r.Get("/", api.Info(s))
 
 	log.Infow("Running server", "url", conf.Address)
 

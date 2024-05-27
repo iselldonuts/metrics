@@ -15,7 +15,10 @@ import (
 
 const (
 	ContentType     = "Content-Type"
+	ContentEncoding = "Content-Encoding"
+	AcceptEncoding  = "Accept-Encoding"
 	ContentTypeJSON = "application/json"
+	ContentTypeHTML = "text/html"
 	Gauge           = "gauge"
 	Counter         = "counter"
 )
