@@ -8,7 +8,7 @@ import (
 	"github.com/iselldonuts/metrics/internal/config/server"
 )
 
-func GetConfig() (*server.Config, error) {
+func getConfig() (*server.Config, error) {
 	conf := &server.Config{}
 
 	flag.StringVar(&conf.Address, "a", "localhost:8080", "Server URL")

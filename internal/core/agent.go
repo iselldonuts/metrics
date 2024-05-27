@@ -1,6 +1,9 @@
 package core
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -8,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/iselldonuts/metrics/internal/api"
 	"github.com/iselldonuts/metrics/internal/config/agent"
 	"github.com/iselldonuts/metrics/internal/metrics"
 )
@@ -42,16 +46,46 @@ func (a *Agent) Start() {
 			gm, cm := a.poller.GetAll()
 			for _, m := range gm {
 				value := strconv.FormatFloat(m.Value, 'f', -1, 64)
-				url := fmt.Sprintf("http://%s/update/gauge/%s/%s", a.baseURL, m.Name, value)
+				url := fmt.Sprintf("http://%s/update/", a.baseURL)
+
+				body := map[string]string{
+					"type":  "gauge",
+					"id":    m.Name,
+					"value": value,
+				}
+
+				jsonBody, err := json.Marshal(body)
+				if err != nil {
+					log.Printf("Error marshalling JSON: %v", err)
+					continue
+				}
+
+				var buf bytes.Buffer
+				gz, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+				if err != nil {
+					log.Printf("Unsupported compress level: %v", err)
+					continue
+				}
+				if _, err := gz.Write(jsonBody); err != nil {
+					log.Printf("Error writing gzipped data: %v", err)
+					continue
+				}
+				if err := gz.Close(); err != nil {
+					log.Printf("Error closing gzip writer: %v", err)
+					continue
+				}
 
 				res, err := client.R().
-					SetHeader("Content-type", "text/plain").
+					SetHeader(api.ContentType, api.ContentTypeJSON).
+					SetHeader(api.ContentEncoding, "gzip").
+					SetBody(buf.Bytes()).
 					Post(url)
 
 				if err != nil {
 					log.Printf("Error updating gauge metric %q: %v", m.Name, err)
 					continue
 				}
+
 				if res.StatusCode() != http.StatusOK {
 					log.Printf("Failure updating metrics %q with status code: %d", m.Name, res.StatusCode())
 					continue
@@ -60,10 +94,39 @@ func (a *Agent) Start() {
 
 			for _, m := range cm {
 				value := strconv.FormatInt(m.Value, 10)
-				url := fmt.Sprintf("http://%s/update/counter/%s/%s", a.baseURL, m.Name, value)
+				url := fmt.Sprintf("http://%s/update/", a.baseURL)
+
+				body := map[string]string{
+					"type":  "counter",
+					"id":    m.Name,
+					"delta": value,
+				}
+
+				jsonBody, err := json.Marshal(body)
+				if err != nil {
+					log.Printf("Error marshalling JSON: %v", err)
+					continue
+				}
+
+				var buf bytes.Buffer
+				gz, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+				if err != nil {
+					log.Printf("Unsupported compress level: %v", err)
+					continue
+				}
+				if _, err := gz.Write(jsonBody); err != nil {
+					log.Printf("Error writing gzipped data: %v", err)
+					continue
+				}
+				if err := gz.Close(); err != nil {
+					log.Printf("Error closing gzip writer: %v", err)
+					continue
+				}
 
 				res, err := client.R().
-					SetHeader("Content-type", "text/plain").
+					SetHeader(api.ContentType, api.ContentTypeJSON).
+					SetHeader(api.ContentEncoding, "gzip").
+					SetBody(buf.Bytes()).
 					Post(url)
 
 				if err != nil {
@@ -75,7 +138,7 @@ func (a *Agent) Start() {
 					continue
 				}
 
-				if m.Name == "PollCounter" {
+				if m.Name == "PollCount" {
 					a.poller.ResetCounter()
 				}
 			}
