@@ -10,7 +10,9 @@ type Storage interface {
 	GetGauge(name string) (float64, bool)
 	GetCounter(name string) (int64, bool)
 	GetAllGauge() map[string]float64
+	SetAllGauge(gm map[string]float64)
 	GetAllCounter() map[string]int64
+	SetAllCounter(cm map[string]int64)
 }
 
 func NewStorage(conf Config) Storage {

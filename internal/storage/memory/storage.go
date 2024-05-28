@@ -51,3 +51,17 @@ func (m *Storage) GetAllGauge() map[string]float64 {
 func (m *Storage) GetAllCounter() map[string]int64 {
 	return m.CounterMap
 }
+
+func (m *Storage) SetAllGauge(gm map[string]float64) {
+	m.GaugeMut.Lock()
+	defer m.GaugeMut.Unlock()
+
+	m.GaugeMap = gm
+}
+
+func (m *Storage) SetAllCounter(cm map[string]int64) {
+	m.CounterMut.Lock()
+	defer m.CounterMut.Unlock()
+
+	m.CounterMap = cm
+}

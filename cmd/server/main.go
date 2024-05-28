@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/iselldonuts/metrics/internal/api"
 	"github.com/iselldonuts/metrics/internal/config/server"
+	"github.com/iselldonuts/metrics/internal/core"
 	"github.com/iselldonuts/metrics/internal/middleware"
 	"github.com/iselldonuts/metrics/internal/storage"
 	"github.com/iselldonuts/metrics/internal/storage/memory"
@@ -19,12 +20,9 @@ func main() {
 	if err != nil {
 		panic("cannot initialize zap")
 	}
-	defer func(logger *zap.Logger) {
-		err := logger.Sync()
-		if err != nil {
-			panic("cannot sync zap")
-		}
-	}(logger)
+	defer func() {
+		_ = logger.Sync()
+	}()
 	log := logger.Sugar()
 
 	conf, err := getConfig()
@@ -54,10 +52,27 @@ func run(conf *server.Config, log *zap.SugaredLogger) error {
 
 	log.Infow("Running server", "url", conf.Address)
 
-	if err := http.ListenAndServe(conf.Address, r); err != nil {
-		if !errors.Is(err, http.ErrServerClosed) {
-			return fmt.Errorf("http server run error: %w", err)
+	b := core.NewArchiver(s, conf)
+
+	if conf.FileStoragePath != "" {
+		if conf.Restore {
+			if err := b.Load(); err != nil {
+				log.Info("Error loading metrics from disk")
+			}
 		}
+
+		if conf.StoreInterval != 0 {
+			go b.Start()
+		}
+	}
+
+	if err := http.ListenAndServe(conf.Address, r); err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			if err := b.Save(); err != nil {
+				return fmt.Errorf("cannot save metrics to disk: %w", err)
+			}
+		}
+		return fmt.Errorf("http server run error: %w", err)
 	}
 	return nil
 }

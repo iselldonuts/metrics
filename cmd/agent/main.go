@@ -18,7 +18,7 @@ func main() {
 
 func run(conf *agent.Config) {
 	log.Printf(
-		"Running a | url: %s, ReportInterval: %d, PollInterval: %d\n",
+		"Running agent | url: %s, ReportInterval: %d, PollInterval: %d\n",
 		conf.Address, conf.ReportInterval, conf.PollInterval,
 	)
 
