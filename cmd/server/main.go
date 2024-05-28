@@ -44,10 +44,10 @@ func run(conf *server.Config, log *zap.SugaredLogger) error {
 	r.Use(middleware.Logger(log))
 	r.Use(middleware.Gzip(log))
 
-	r.Post("/update/{type}/{name}/{value}", api.UpdateMetric(s))
-	r.Post("/update/", api.UpdateMetricJSON(s))
-	r.Get("/value/{type}/{name}", api.GetMetric(s))
-	r.Post("/value/", api.GetMetricJSON(s))
+	r.Post("/update/{type}/{name}/{value}", api.UpdateMetric(s, log))
+	r.Post("/update/", api.UpdateMetricJSON(s, log))
+	r.Get("/value/{type}/{name}", api.GetMetric(s, log))
+	r.Post("/value/", api.GetMetricJSON(s, log))
 	r.Get("/", api.Info(s))
 
 	log.Infow("Running server", "url", conf.Address)

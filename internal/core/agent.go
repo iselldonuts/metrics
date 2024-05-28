@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/iselldonuts/metrics/internal/api"
 	"github.com/iselldonuts/metrics/internal/config/agent"
 	"github.com/iselldonuts/metrics/internal/metrics"
+	"go.uber.org/zap"
 )
 
 type Agent struct {
@@ -32,7 +32,7 @@ func NewAgent(poller *metrics.Poller, conf *agent.Config) *Agent {
 	}
 }
 
-func (a *Agent) Start() {
+func (a *Agent) Start(log *zap.SugaredLogger) {
 	client := resty.New()
 
 	pollerTicker := time.NewTicker(a.pollInterval)
@@ -56,22 +56,22 @@ func (a *Agent) Start() {
 
 				jsonBody, err := json.Marshal(body)
 				if err != nil {
-					log.Printf("Error marshalling JSON: %v", err)
+					log.Infof("Error marshalling JSON: %v", err)
 					continue
 				}
 
 				var buf bytes.Buffer
 				gz, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
 				if err != nil {
-					log.Printf("Unsupported compress level: %v", err)
+					log.Infof("Unsupported compress level: %v", err)
 					continue
 				}
 				if _, err := gz.Write(jsonBody); err != nil {
-					log.Printf("Error writing gzipped data: %v", err)
+					log.Infof("Error writing gzipped data: %v", err)
 					continue
 				}
 				if err := gz.Close(); err != nil {
-					log.Printf("Error closing gzip writer: %v", err)
+					log.Infof("Error closing gzip writer: %v", err)
 					continue
 				}
 
@@ -82,12 +82,12 @@ func (a *Agent) Start() {
 					Post(url)
 
 				if err != nil {
-					log.Printf("Error updating gauge metric %q: %v", m.Name, err)
+					log.Infof("Error updating gauge metric %q: %v", m.Name, err)
 					continue
 				}
 
 				if res.StatusCode() != http.StatusOK {
-					log.Printf("Failure updating metrics %q with status code: %d", m.Name, res.StatusCode())
+					log.Infof("Failure updating metrics %q with status code: %d", m.Name, res.StatusCode())
 					continue
 				}
 			}
@@ -104,22 +104,22 @@ func (a *Agent) Start() {
 
 				jsonBody, err := json.Marshal(body)
 				if err != nil {
-					log.Printf("Error marshalling JSON: %v", err)
+					log.Infof("Error marshalling JSON: %v", err)
 					continue
 				}
 
 				var buf bytes.Buffer
 				gz, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
 				if err != nil {
-					log.Printf("Unsupported compress level: %v", err)
+					log.Infof("Unsupported compress level: %v", err)
 					continue
 				}
 				if _, err := gz.Write(jsonBody); err != nil {
-					log.Printf("Error writing gzipped data: %v", err)
+					log.Infof("Error writing gzipped data: %v", err)
 					continue
 				}
 				if err := gz.Close(); err != nil {
-					log.Printf("Error closing gzip writer: %v", err)
+					log.Infof("Error closing gzip writer: %v", err)
 					continue
 				}
 
@@ -130,11 +130,11 @@ func (a *Agent) Start() {
 					Post(url)
 
 				if err != nil {
-					log.Printf("Error updating counter metrics %q: %v", m.Name, err)
+					log.Infof("Error updating counter metrics %q: %v", m.Name, err)
 					continue
 				}
 				if res.StatusCode() != http.StatusOK {
-					log.Printf("Failure updating counter metric %q with status code: %d", m.Name, res.StatusCode())
+					log.Infof("Failure updating counter metric %q with status code: %d", m.Name, res.StatusCode())
 					continue
 				}
 

@@ -3,7 +3,6 @@ package core
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -54,8 +53,6 @@ func (b *Archiver) Load() error {
 
 	b.storage.SetAllGauge(m.Gauge)
 	b.storage.SetAllCounter(m.Counter)
-	log.Printf("Metrics to load: %v", m)
-	log.Printf("Storage updated: %v", b.storage)
 	return nil
 }
 
@@ -69,9 +66,6 @@ func (b *Archiver) Save() error {
 	}
 
 	data, err := json.Marshal(m)
-
-	log.Println("METRICS: ", m)
-	log.Println("DATA: ", string(data))
 
 	if err != nil {
 		return fmt.Errorf("could not marshal gauges: %w", err)

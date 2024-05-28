@@ -4,23 +4,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/iselldonuts/metrics/internal/model"
 	"github.com/iselldonuts/metrics/internal/storage"
+	"go.uber.org/zap"
 )
 
 const (
-	ContentType     = "Content-Type"
-	ContentEncoding = "Content-Encoding"
-	AcceptEncoding  = "Accept-Encoding"
-	ContentTypeJSON = "application/json"
-	ContentTypeHTML = "text/html"
-	Gauge           = "gauge"
-	Counter         = "counter"
+	ContentType       = "Content-Type"
+	ContentEncoding   = "Content-Encoding"
+	AcceptEncoding    = "Accept-Encoding"
+	ContentTypeJSON   = "application/json"
+	ContentTypeHTML   = "text/html"
+	Gauge             = "gauge"
+	Counter           = "counter"
+	InvalidMetricType = "invalid metric type: %s"
 )
 
 var (
@@ -29,7 +30,7 @@ var (
 	errMetricNotFound = errors.New("metric not found")
 )
 
-func UpdateMetric(s storage.Storage) http.HandlerFunc {
+func UpdateMetric(s storage.Storage, log *zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mtype := chi.URLParam(r, "type")
 		name := chi.URLParam(r, "name")
@@ -39,6 +40,7 @@ func UpdateMetric(s storage.Storage) http.HandlerFunc {
 		case Gauge:
 			v, err := strconv.ParseFloat(value, 64)
 			if err != nil {
+				log.Infof("invalid value for gauge metric %q: %s", name, value)
 				http.Error(w, errMetricValue.Error(), http.StatusBadRequest)
 				return
 			}
@@ -46,18 +48,20 @@ func UpdateMetric(s storage.Storage) http.HandlerFunc {
 		case Counter:
 			v, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
+				log.Infof("invalid value for counter metric %q: %s", name, value)
 				http.Error(w, errMetricValue.Error(), http.StatusBadRequest)
 				return
 			}
 			s.UpdateCounter(name, v)
 		default:
+			log.Infof(InvalidMetricType, mtype)
 			http.Error(w, errMetricType.Error(), http.StatusBadRequest)
 			return
 		}
 	}
 }
 
-func UpdateMetricJSON(s storage.Storage) http.HandlerFunc {
+func UpdateMetricJSON(s storage.Storage, log *zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get(ContentType) != ContentTypeJSON {
 			http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
@@ -66,7 +70,7 @@ func UpdateMetricJSON(s storage.Storage) http.HandlerFunc {
 
 		var metrics model.Metrics
 		if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
-			log.Printf("failed to unmarshal metrics: %v", err)
+			log.Infof("failed to unmarshal metrics: %v", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -77,13 +81,14 @@ func UpdateMetricJSON(s storage.Storage) http.HandlerFunc {
 		case Counter:
 			s.UpdateCounter(metrics.ID, *metrics.Delta)
 		default:
+			log.Infof(InvalidMetricType, metrics.MType)
 			http.Error(w, errMetricType.Error(), http.StatusBadRequest)
 			return
 		}
 	}
 }
 
-func GetMetric(s storage.Storage) http.HandlerFunc {
+func GetMetric(s storage.Storage, log *zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mtype := chi.URLParam(r, "type")
 		name := chi.URLParam(r, "name")
@@ -92,6 +97,7 @@ func GetMetric(s storage.Storage) http.HandlerFunc {
 		case Gauge:
 			v, ok := s.GetGauge(name)
 			if !ok {
+				log.Infof("gauge metric %q not found", name)
 				http.Error(w, errMetricNotFound.Error(), http.StatusNotFound)
 				return
 			}
@@ -100,13 +106,14 @@ func GetMetric(s storage.Storage) http.HandlerFunc {
 			value := strconv.FormatFloat(v, 'f', -1, 64)
 			_, err := w.Write([]byte(value))
 			if err != nil {
-				log.Printf("error writing response: %v", err)
+				log.Infof("error writing response: %v", err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
 		case Counter:
 			v, ok := s.GetCounter(name)
 			if !ok {
+				log.Infof("counter metric %q not found", name)
 				http.Error(w, errMetricNotFound.Error(), http.StatusNotFound)
 				return
 			}
@@ -115,17 +122,18 @@ func GetMetric(s storage.Storage) http.HandlerFunc {
 			value := strconv.FormatInt(v, 10)
 			_, err := w.Write([]byte(value))
 			if err != nil {
-				log.Printf("error writing response: %v", err)
+				log.Infof("error writing response: %v", err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
 		default:
+			log.Infof(InvalidMetricType, mtype)
 			http.Error(w, errMetricType.Error(), http.StatusBadRequest)
 		}
 	}
 }
 
-func GetMetricJSON(s storage.Storage) http.HandlerFunc {
+func GetMetricJSON(s storage.Storage, log *zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get(ContentType) != ContentTypeJSON {
 			http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
@@ -134,6 +142,7 @@ func GetMetricJSON(s storage.Storage) http.HandlerFunc {
 
 		var metrics model.Metrics
 		if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
+			log.Infof("failed to unmarshal metrics: %v", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -144,29 +153,33 @@ func GetMetricJSON(s storage.Storage) http.HandlerFunc {
 		case Gauge:
 			v, ok := s.GetGauge(metrics.ID)
 			if !ok {
+				log.Infof("%s metric %q not found", metrics.MType, metrics.ID)
 				http.Error(w, errMetricNotFound.Error(), http.StatusNotFound)
 				return
 			}
 
 			metrics.Value = &v
 			if err := json.NewEncoder(w).Encode(&metrics); err != nil {
+				log.Infof("failed to marshal %s metrics: %v", metrics.MType, err)
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 		case Counter:
 			v, ok := s.GetCounter(metrics.ID)
 			if !ok {
+				log.Infof("%s metric %q not found", metrics.MType, metrics.ID)
 				http.Error(w, errMetricNotFound.Error(), http.StatusNotFound)
 				return
 			}
 			metrics.Delta = &v
 
-			encoder := json.NewEncoder(w)
-			if err := encoder.Encode(&metrics); err != nil {
+			if err := json.NewEncoder(w).Encode(&metrics); err != nil {
+				log.Infof("failed to marshal %s metrics: %v", metrics.MType, err)
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 		default:
+			log.Infof(InvalidMetricType, metrics.MType)
 			http.Error(w, errMetricType.Error(), http.StatusBadRequest)
 		}
 	}
