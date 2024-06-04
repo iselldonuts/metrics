@@ -7,6 +7,27 @@ import (
 	"go.uber.org/zap"
 )
 
+func Logger(log *zap.SugaredLogger) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+
+			lw := newLoggingResponseWriter(w)
+			h.ServeHTTP(lw, r)
+
+			duration := time.Since(start)
+
+			log.Infoln(
+				"uri", r.RequestURI,
+				"method", r.Method,
+				"duration", duration,
+				"status", lw.responseData.status,
+				"size", lw.responseData.size,
+			)
+		})
+	}
+}
+
 type loggingResponseWriter struct {
 	http.ResponseWriter
 	responseData *responseData
@@ -32,27 +53,5 @@ func (w *loggingResponseWriter) WriteHeader(status int) {
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := w.ResponseWriter.Write(b)
 	w.responseData.size += size
-	//nolint:wrapcheck // leads to unexpected behavior
-	return size, err
-}
-
-func Logger(log *zap.SugaredLogger) func(h http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-
-			lw := newLoggingResponseWriter(w)
-			h.ServeHTTP(lw, r)
-
-			duration := time.Since(start)
-
-			log.Infoln(
-				"uri", r.RequestURI,
-				"method", r.Method,
-				"duration", duration,
-				"status", lw.responseData.status,
-				"size", lw.responseData.size,
-			)
-		})
-	}
+	return size, err //nolint:wrapcheck // leads to unexpected behavior
 }

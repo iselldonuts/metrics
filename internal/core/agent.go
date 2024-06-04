@@ -38,6 +38,12 @@ func (a *Agent) Start(log *zap.SugaredLogger) {
 	pollerTicker := time.NewTicker(a.pollInterval)
 	senderTicker := time.NewTicker(a.reportInterval)
 
+	var buf bytes.Buffer
+	gz, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+	if err != nil {
+		log.Fatalf("Unsupported compress level: %v", err)
+	}
+
 	for {
 		select {
 		case <-pollerTicker.C:
@@ -56,22 +62,16 @@ func (a *Agent) Start(log *zap.SugaredLogger) {
 
 				jsonBody, err := json.Marshal(body)
 				if err != nil {
-					log.Infof("Error marshalling JSON: %v", err)
+					log.Errorf("Error marshalling JSON: %v", err)
 					continue
 				}
 
-				var buf bytes.Buffer
-				gz, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
-				if err != nil {
-					log.Infof("Unsupported compress level: %v", err)
-					continue
-				}
 				if _, err := gz.Write(jsonBody); err != nil {
-					log.Infof("Error writing gzipped data: %v", err)
+					log.Errorf("Error writing gzipped data: %v", err)
 					continue
 				}
 				if err := gz.Close(); err != nil {
-					log.Infof("Error closing gzip writer: %v", err)
+					log.Errorf("Error closing gzip writer: %v", err)
 					continue
 				}
 
@@ -80,9 +80,10 @@ func (a *Agent) Start(log *zap.SugaredLogger) {
 					SetHeader(api.ContentEncoding, "gzip").
 					SetBody(buf.Bytes()).
 					Post(url)
+				gz.Reset(&buf)
 
 				if err != nil {
-					log.Infof("Error updating gauge metric %q: %v", m.Name, err)
+					log.Errorf("Error updating gauge metric %q: %v", m.Name, err)
 					continue
 				}
 
@@ -104,22 +105,16 @@ func (a *Agent) Start(log *zap.SugaredLogger) {
 
 				jsonBody, err := json.Marshal(body)
 				if err != nil {
-					log.Infof("Error marshalling JSON: %v", err)
+					log.Errorf("Error marshalling JSON: %v", err)
 					continue
 				}
 
-				var buf bytes.Buffer
-				gz, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
-				if err != nil {
-					log.Infof("Unsupported compress level: %v", err)
-					continue
-				}
 				if _, err := gz.Write(jsonBody); err != nil {
-					log.Infof("Error writing gzipped data: %v", err)
+					log.Errorf("Error writing gzipped data: %v", err)
 					continue
 				}
 				if err := gz.Close(); err != nil {
-					log.Infof("Error closing gzip writer: %v", err)
+					log.Errorf("Error closing gzip writer: %v", err)
 					continue
 				}
 
@@ -128,9 +123,10 @@ func (a *Agent) Start(log *zap.SugaredLogger) {
 					SetHeader(api.ContentEncoding, "gzip").
 					SetBody(buf.Bytes()).
 					Post(url)
+				gz.Reset(&buf)
 
 				if err != nil {
-					log.Infof("Error updating counter metrics %q: %v", m.Name, err)
+					log.Errorf("Error updating counter metrics %q: %v", m.Name, err)
 					continue
 				}
 				if res.StatusCode() != http.StatusOK {

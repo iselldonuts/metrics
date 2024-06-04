@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"net/http"
@@ -18,7 +19,7 @@ import (
 func main() {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
-		panic("cannot initialize zap")
+		panic(err)
 	}
 	defer func() {
 		_ = logger.Sync()
@@ -40,9 +41,10 @@ func run(conf *server.Config, log *zap.SugaredLogger) error {
 	s := storage.NewStorage(storage.Config{
 		Memory: &memory.Config{},
 	})
+	zw := gzip.NewWriter(nil)
 
 	r.Use(middleware.Logger(log))
-	r.Use(middleware.Gzip(log))
+	r.Use(middleware.Gzip(zw, log))
 
 	r.Post("/update/{type}/{name}/{value}", api.UpdateMetric(s, log))
 	r.Post("/update/", api.UpdateMetricJSON(s, log))
