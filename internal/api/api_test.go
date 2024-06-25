@@ -45,11 +45,12 @@ func TestUpdateMetric(t *testing.T) {
 	}
 
 	r := chi.NewRouter()
-	s := memory.NewStorage()
-	logger, _ := zap.NewDevelopment()
-	log := logger.Sugar()
+	l, _ := zap.NewDevelopment()
+	log := l.Sugar()
+	s := memory.NewStorage(log)
+	a := NewAPI(s, log, false)
+	r.Mount("/", a.Routes())
 
-	r.Post("/update/{type}/{name}/{value}", UpdateMetric(s, log))
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 

@@ -3,11 +3,13 @@ package middleware
 import (
 	"net/http"
 	"time"
-
-	"go.uber.org/zap"
 )
 
-func Logger(log *zap.SugaredLogger) func(h http.Handler) http.Handler {
+type Log interface {
+	Infoln(args ...any)
+}
+
+func Logger(log Log) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()

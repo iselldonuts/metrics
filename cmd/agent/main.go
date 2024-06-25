@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/go-resty/resty/v2"
 	"github.com/iselldonuts/metrics/internal/config/agent"
 	"github.com/iselldonuts/metrics/internal/core"
 	"github.com/iselldonuts/metrics/internal/metrics"
@@ -10,18 +11,20 @@ import (
 func main() {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
-		panic("cannot initialize zap")
+		panic(err)
 	}
-	defer func() {
+	defer func(logger *zap.Logger) {
 		_ = logger.Sync()
-	}()
+	}(logger)
 	log := logger.Sugar()
 
-	cfg, err := getConfig()
+	conf, err := getConfig()
 	if err != nil {
 		log.Panic(err)
 	}
-	run(cfg, log)
+	log.Infow("Config loaded", "config", conf)
+
+	run(conf, log)
 }
 
 func run(conf *agent.Config, log *zap.SugaredLogger) {
@@ -30,7 +33,8 @@ func run(conf *agent.Config, log *zap.SugaredLogger) {
 		conf.Address, conf.ReportInterval, conf.PollInterval,
 	)
 
-	poller := metrics.NewPoller()
-	a := core.NewAgent(poller, conf)
-	a.Start(log)
+	p := metrics.NewPoller()
+	s := metrics.NewSender(conf.Address, resty.New(), log)
+	a := core.NewAgent(p, s, conf, log)
+	a.Start()
 }

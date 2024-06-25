@@ -1,48 +1,50 @@
 package core
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/go-resty/resty/v2"
-	"github.com/iselldonuts/metrics/internal/api"
 	"github.com/iselldonuts/metrics/internal/config/agent"
 	"github.com/iselldonuts/metrics/internal/metrics"
-	"go.uber.org/zap"
 )
 
+type Poller interface {
+	Update()
+	ResetCounter()
+	GetAll() ([]metrics.GaugeMetric, []metrics.CounterMetric)
+}
+
+type Sender interface {
+	SendMetric(typ, name, value string) bool
+}
+
+type Logger interface {
+	Infof(msg string, fields ...any)
+}
+
 type Agent struct {
-	poller         *metrics.Poller
+	poller         Poller
+	sender         Sender
+	logger         Logger
 	baseURL        string
 	reportInterval time.Duration
 	pollInterval   time.Duration
 }
 
-func NewAgent(poller *metrics.Poller, conf *agent.Config) *Agent {
+func NewAgent(poller Poller, sender Sender, conf *agent.Config, log Logger) *Agent {
 	return &Agent{
 		poller:         poller,
+		sender:         sender,
 		baseURL:        conf.Address,
+		logger:         log,
 		reportInterval: time.Duration(conf.ReportInterval) * time.Second,
 		pollInterval:   time.Duration(conf.PollInterval) * time.Second,
 	}
 }
 
-func (a *Agent) Start(log *zap.SugaredLogger) {
-	client := resty.New()
-
+func (a *Agent) Start() {
 	pollerTicker := time.NewTicker(a.pollInterval)
 	senderTicker := time.NewTicker(a.reportInterval)
-
-	var buf bytes.Buffer
-	gz, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
-	if err != nil {
-		log.Fatalf("Unsupported compress level: %v", err)
-	}
 
 	for {
 		select {
@@ -52,85 +54,16 @@ func (a *Agent) Start(log *zap.SugaredLogger) {
 			gm, cm := a.poller.GetAll()
 			for _, m := range gm {
 				value := strconv.FormatFloat(m.Value, 'f', -1, 64)
-				url := fmt.Sprintf("http://%s/update/", a.baseURL)
-
-				body := map[string]string{
-					"type":  "gauge",
-					"id":    m.Name,
-					"value": value,
-				}
-
-				jsonBody, err := json.Marshal(body)
-				if err != nil {
-					log.Errorf("Error marshalling JSON: %v", err)
-					continue
-				}
-
-				if _, err := gz.Write(jsonBody); err != nil {
-					log.Errorf("Error writing gzipped data: %v", err)
-					continue
-				}
-				if err := gz.Close(); err != nil {
-					log.Errorf("Error closing gzip writer: %v", err)
-					continue
-				}
-
-				res, err := client.R().
-					SetHeader(api.ContentType, api.ContentTypeJSON).
-					SetHeader(api.ContentEncoding, "gzip").
-					SetBody(buf.Bytes()).
-					Post(url)
-				gz.Reset(&buf)
-
-				if err != nil {
-					log.Errorf("Error updating gauge metric %q: %v", m.Name, err)
-					continue
-				}
-
-				if res.StatusCode() != http.StatusOK {
-					log.Infof("Failure updating metrics %q with status code: %d", m.Name, res.StatusCode())
+				if ok := a.sender.SendMetric("gauge", m.Name, value); !ok {
+					a.logger.Infof("Failed to send gauge metric %q = %s", m.Name, value)
 					continue
 				}
 			}
 
 			for _, m := range cm {
 				value := strconv.FormatInt(m.Value, 10)
-				url := fmt.Sprintf("http://%s/update/", a.baseURL)
-
-				body := map[string]string{
-					"type":  "counter",
-					"id":    m.Name,
-					"delta": value,
-				}
-
-				jsonBody, err := json.Marshal(body)
-				if err != nil {
-					log.Errorf("Error marshalling JSON: %v", err)
-					continue
-				}
-
-				if _, err := gz.Write(jsonBody); err != nil {
-					log.Errorf("Error writing gzipped data: %v", err)
-					continue
-				}
-				if err := gz.Close(); err != nil {
-					log.Errorf("Error closing gzip writer: %v", err)
-					continue
-				}
-
-				res, err := client.R().
-					SetHeader(api.ContentType, api.ContentTypeJSON).
-					SetHeader(api.ContentEncoding, "gzip").
-					SetBody(buf.Bytes()).
-					Post(url)
-				gz.Reset(&buf)
-
-				if err != nil {
-					log.Errorf("Error updating counter metrics %q: %v", m.Name, err)
-					continue
-				}
-				if res.StatusCode() != http.StatusOK {
-					log.Infof("Failure updating counter metric %q with status code: %d", m.Name, res.StatusCode())
+				if ok := a.sender.SendMetric("counter", m.Name, value); !ok {
+					a.logger.Infof("Failed to send counter metric %q = %s", m.Name, value)
 					continue
 				}
 

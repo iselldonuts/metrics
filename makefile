@@ -41,3 +41,9 @@ _golangci-lint-rm-unformatted-report: _golangci-lint-format-report
 .PHONY: golangci-lint-clean
 golangci-lint-clean:
 	sudo rm -rf ./golangci-lint
+
+.PHONY: build
+build:
+	go build ./cmd/server
+	go build ./cmd/agent
+
