@@ -1,36 +1,48 @@
 package core
 
 import (
-	"fmt"
-	"log"
-	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/iselldonuts/metrics/internal/config/agent"
 	"github.com/iselldonuts/metrics/internal/metrics"
 )
 
+type Poller interface {
+	Update()
+	ResetCounter()
+	GetAll() ([]metrics.GaugeMetric, []metrics.CounterMetric)
+}
+
+type Sender interface {
+	SendMetric(typ, name, value string) bool
+}
+
+type Logger interface {
+	Infof(msg string, fields ...any)
+}
+
 type Agent struct {
-	poller         *metrics.Poller
+	poller         Poller
+	sender         Sender
+	logger         Logger
 	baseURL        string
 	reportInterval time.Duration
 	pollInterval   time.Duration
 }
 
-func NewAgent(poller *metrics.Poller, conf *agent.Config) *Agent {
+func NewAgent(poller Poller, sender Sender, conf *agent.Config, log Logger) *Agent {
 	return &Agent{
 		poller:         poller,
+		sender:         sender,
 		baseURL:        conf.Address,
+		logger:         log,
 		reportInterval: time.Duration(conf.ReportInterval) * time.Second,
 		pollInterval:   time.Duration(conf.PollInterval) * time.Second,
 	}
 }
 
 func (a *Agent) Start() {
-	client := resty.New()
-
 	pollerTicker := time.NewTicker(a.pollInterval)
 	senderTicker := time.NewTicker(a.reportInterval)
 
@@ -42,40 +54,16 @@ func (a *Agent) Start() {
 			gm, cm := a.poller.GetAll()
 			for _, m := range gm {
 				value := strconv.FormatFloat(m.Value, 'f', -1, 64)
-				url := fmt.Sprintf("http://%s/update/gauge/%s/%s", a.baseURL, m.Name, value)
-
-				res, err := client.R().
-					SetHeader("Content-type", "text/plain").
-					Post(url)
-
-				if err != nil {
-					log.Printf("Error updating gauge metric %q: %v", m.Name, err)
-					continue
-				}
-				if res.StatusCode() != http.StatusOK {
-					log.Printf("Failure updating metrics %q with status code: %d", m.Name, res.StatusCode())
-					continue
-				}
+				a.sender.SendMetric("gauge", m.Name, value)
 			}
 
 			for _, m := range cm {
 				value := strconv.FormatInt(m.Value, 10)
-				url := fmt.Sprintf("http://%s/update/counter/%s/%s", a.baseURL, m.Name, value)
-
-				res, err := client.R().
-					SetHeader("Content-type", "text/plain").
-					Post(url)
-
-				if err != nil {
-					log.Printf("Error updating counter metrics %q: %v", m.Name, err)
-					continue
-				}
-				if res.StatusCode() != http.StatusOK {
-					log.Printf("Failure updating counter metric %q with status code: %d", m.Name, res.StatusCode())
+				if ok := a.sender.SendMetric("counter", m.Name, value); !ok {
 					continue
 				}
 
-				if m.Name == "PollCounter" {
+				if m.Name == "PollCount" {
 					a.poller.ResetCounter()
 				}
 			}

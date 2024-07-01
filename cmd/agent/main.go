@@ -1,28 +1,41 @@
 package main
 
 import (
-	"log"
+	"os"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/iselldonuts/metrics/internal/config/agent"
 	"github.com/iselldonuts/metrics/internal/core"
 	"github.com/iselldonuts/metrics/internal/metrics"
+	"go.uber.org/zap"
 )
 
 func main() {
-	cfg, err := GetConfig()
+	logger, err := zap.NewDevelopment()
 	if err != nil {
+		println(err)
+		os.Exit(1)
+	}
+	log := logger.Sugar()
+
+	conf, err := getConfig()
+	if err != nil {
+		_ = logger.Sync()
 		log.Fatal(err)
 	}
-	run(cfg)
+	log.Infow("Config loaded", "config", conf)
+
+	run(conf, log)
 }
 
-func run(conf *agent.Config) {
-	log.Printf(
-		"Running a | url: %s, ReportInterval: %d, PollInterval: %d\n",
+func run(conf *agent.Config, log *zap.SugaredLogger) {
+	log.Infof(
+		"Running agent | url: %s, ReportInterval: %d, PollInterval: %d\n",
 		conf.Address, conf.ReportInterval, conf.PollInterval,
 	)
 
-	poller := metrics.NewPoller()
-	a := core.NewAgent(poller, conf)
+	p := metrics.NewPoller()
+	s := metrics.NewSender(conf.Address, resty.New(), log)
+	a := core.NewAgent(p, s, conf, log)
 	a.Start()
 }
