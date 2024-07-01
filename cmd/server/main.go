@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -20,20 +21,20 @@ import (
 func main() {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
-		panic(err)
+		println(err)
+		os.Exit(1)
 	}
-	defer func(logger *zap.Logger) {
-		_ = logger.Sync()
-	}(logger)
 	log := logger.Sugar()
 
 	conf, err := getConfig()
 	if err != nil {
-		log.Panic(err)
+		_ = logger.Sync()
+		log.Fatal(err)
 	}
 
 	if err := run(conf, log); err != nil {
-		log.Panic(err)
+		_ = logger.Sync()
+		log.Fatal(err)
 	}
 }
 
@@ -50,7 +51,7 @@ func run(conf *server.Config, log *zap.SugaredLogger) error {
 	if conf.FileStoragePath != "" {
 		if conf.Restore {
 			if err := s.Load(); err != nil {
-				log.Infof("Error loading metrics from %q: %v", conf.FileStoragePath, err)
+				log.Infof("failed loading metrics from %q: %v", conf.FileStoragePath, err)
 			}
 		}
 
@@ -59,7 +60,9 @@ func run(conf *server.Config, log *zap.SugaredLogger) error {
 				storeSaveTicker := time.NewTicker(time.Duration(conf.StoreInterval) * time.Second)
 				for {
 					<-storeSaveTicker.C
-					_ = s.Save()
+					if err := s.Save(); err != nil {
+						log.Errorf("failed saving metrics to %q: %v", conf.FileStoragePath, err)
+					}
 				}
 			}()
 		}

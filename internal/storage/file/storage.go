@@ -72,12 +72,10 @@ func (s *Storage) Save() error {
 
 	data, err := json.Marshal(metrics)
 	if err != nil {
-		s.logger.Errorf("error marshalling storage: %v", err)
 		return fmt.Errorf("marshall error: %w", err)
 	}
 
 	if err := os.WriteFile(s.path, data, FMode); err != nil {
-		s.logger.Errorf("error saving file %s: %v", s.path, err)
 		return fmt.Errorf("file save error: %w", err)
 	}
 	return nil

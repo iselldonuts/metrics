@@ -54,16 +54,12 @@ func (a *Agent) Start() {
 			gm, cm := a.poller.GetAll()
 			for _, m := range gm {
 				value := strconv.FormatFloat(m.Value, 'f', -1, 64)
-				if ok := a.sender.SendMetric("gauge", m.Name, value); !ok {
-					a.logger.Infof("Failed to send gauge metric %q = %s", m.Name, value)
-					continue
-				}
+				a.sender.SendMetric("gauge", m.Name, value)
 			}
 
 			for _, m := range cm {
 				value := strconv.FormatInt(m.Value, 10)
 				if ok := a.sender.SendMetric("counter", m.Name, value); !ok {
-					a.logger.Infof("Failed to send counter metric %q = %s", m.Name, value)
 					continue
 				}
 

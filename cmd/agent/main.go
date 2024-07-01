@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/iselldonuts/metrics/internal/config/agent"
 	"github.com/iselldonuts/metrics/internal/core"
@@ -11,16 +13,15 @@ import (
 func main() {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
-		panic(err)
+		println(err)
+		os.Exit(1)
 	}
-	defer func(logger *zap.Logger) {
-		_ = logger.Sync()
-	}(logger)
 	log := logger.Sugar()
 
 	conf, err := getConfig()
 	if err != nil {
-		log.Panic(err)
+		_ = logger.Sync()
+		log.Fatal(err)
 	}
 	log.Infow("Config loaded", "config", conf)
 
