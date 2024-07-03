@@ -8,10 +8,10 @@ import (
 	"github.com/iselldonuts/metrics/internal/config/agent"
 )
 
-func GetConfig() (*agent.Config, error) {
-	const defaultReportInterval = 10
-	const defaultPollInterval = 2
+const defaultReportInterval = 10
+const defaultPollInterval = 2
 
+func getConfig() (*agent.Config, error) {
 	conf := &agent.Config{}
 
 	flag.StringVar(&conf.Address, "a", "localhost:8080", "Server URL")

@@ -9,6 +9,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/iselldonuts/metrics/internal/storage/memory"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func TestUpdateMetric(t *testing.T) {
@@ -44,9 +45,12 @@ func TestUpdateMetric(t *testing.T) {
 	}
 
 	r := chi.NewRouter()
-	s := memory.NewStorage()
+	l, _ := zap.NewDevelopment()
+	log := l.Sugar()
+	s := memory.NewStorage(log)
+	a := NewAPI(s, log, false)
+	r.Mount("/", a.Routes())
 
-	r.Post("/update/{type}/{name}/{value}", UpdateMetric(s))
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 
@@ -54,6 +58,7 @@ func TestUpdateMetric(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			req := resty.New().R()
 			req.Method = http.MethodPost
+
 			req.URL = srv.URL + test.url
 
 			res, err := req.Send()
